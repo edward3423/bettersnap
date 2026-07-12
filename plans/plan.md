@@ -7,7 +7,7 @@ Terminology in this document is defined in [CONTEXT.md](../CONTEXT.md). Decision
 `Snap.app` maps modifier+number to Dock slots, Windows-taskbar style, but it is slow. Verified against the binary:
 
 - `lipo -archs` reports **`x86_64 i386`** - no arm64 slice, so every invocation runs through **Rosetta 2** on Apple Silicon. This, and not anything it does at runtime, is why it is slow.
-- `nm -u` shows it imports `_RegisterEventHotKey` and calls `activateWithOptions:`, and imports **no `_AX*` symbols at all** - it is a zero-permission background agent. It also imports no `CGWindowList`, so it does no Windowless check, which is why `⌥1` on Finder with no windows open appears to do nothing.
+- `nm -u` shows it imports `_RegisterEventHotKey` and calls `activateWithOptions:`, and imports **no `_AX*` symbols at all** - it is a zero-permission background agent. It also imports no `CGWindowList`, so it never checks whether an app is showing a window, which is why `⌥1` on Finder with no windows open appears to do nothing.
 
 Goal: a native arm64 replacement that is instant, runs as a background agent, and is **completely inert when idle** - not "low power", but receiving no events and never being scheduled.
 
@@ -18,17 +18,17 @@ Scope: **personal tool, this Mac only.** Self-signed, no notarization, `LSMinimu
 - **Slot 1 is Finder. Slots 2..10 are the Pinned Apps in Dock order.** So Slot N is the Nth icon in your Dock. Recent Apps and `persistent-others` (Downloads, Trash) are ignored.
 - Keys **1-9 and 0** (0 = Slot 10), matching Windows.
 - Default Modifier Set: **Option**. Changeable to any combination of Control / Option / Command / Shift.
-- **A Chord toggles.** Press to bring the app to you; press again to send it away. Full precedence in [ADR 0003](../docs/adr/0003-second-press-hides.md):
+- **A Chord toggles.** Press to bring the app to you; press again to send it away. See [ADR 0003](../docs/adr/0003-second-press-hides.md) and [ADR 0006](../docs/adr/0006-let-launchservices-decide-how-to-show-an-app.md):
 
   | App state | Action |
   | --- | --- |
-  | Not running | Launch |
-  | Owns no windows at all | Reopen (so a window actually appears) |
-  | Hidden | unhide, then Activate |
-  | Frontmost | **Hide** |
-  | Otherwise | Activate |
+  | Frontmost, showing a Visible Window | **Hide** |
+  | Showing a Visible Window, not frontmost | **Activate** - one Mach message |
+  | Anything else: not running, Hidden, on another Space, no windows | **Open** - hand it to LaunchServices |
 
-  The order is load-bearing. "Owns no windows" must be checked before "Hidden" and "Frontmost", or Finder-with-nothing-open - the most common state of the most-used Slot - would Hide invisibly and read as broken.
+  A Chord Hides only when the app is genuinely showing you something. Hiding Finder-with-nothing-open - the most common state of the most-used Slot - would be invisible and read as broken.
+
+  The last row is one case, not four, because those four states **cannot be told apart from outside the app**. Every app owns off-screen layer-0 windows indistinguishable from real ones, so "does this app have any windows" has no honest answer at zero permissions. `Open` delegates the question to the app, which is the only thing that knows. This is what clicking a Dock icon does.
 
 - **All ten Chords are always registered**, including Slots with no app. An unbound Chord does nothing, and is swallowed rather than passed through: with the default Option modifier, `⌥8` no longer types `•`. This is the deliberate price of having no Dock watcher - see [ADR 0005](../docs/adr/0005-nothing-happens-until-a-key-is-pressed.md).
 - **Holding a Chord acts once.** Auto-repeat is suppressed by gating on key release; a genuine double-tap still toggles at any speed.
@@ -44,12 +44,13 @@ On the current Dock: `⌥1` Finder, `⌥2` System Settings, `⌥3` Safari, `⌥4
 | --- | --- | --- |
 | Chord registration | Carbon `RegisterEventHotKey`, behind a `HotKeyBackend` protocol | The only mechanism needing no TCC permission, and matching happens inside WindowServer so we get **zero wakeups** while the user types elsewhere. See [ADR 0002](../docs/adr/0002-carbon-registereventhotkey-for-chords.md). |
 | Hotkey library | **None** - hand-roll ~100 lines | `KeyboardShortcuts` exists mainly for its recorder UI. Our config is four checkboxes over fixed number keys. |
-| Activate | `NSRunningApplication.activate(options: .activateAllWindows)` | Sub-millisecond Mach message. `.activateAllWindows` is required - the default only raises the key window, which is wrong for "show me that app". |
+| Activate | `NSRunningApplication.activate(options: .activateAllWindows)` | Sub-millisecond Mach message. `.activateAllWindows` is required - the default only raises the key window, which is wrong for "show me that app". Only used when the app is already visible. |
 | Hide | `NSRunningApplication.hide()` | Plain AppKit, **no permission**. The plan originally dropped hide-on-second-press believing it needed Accessibility. It does not. |
-| Launch / Reopen | `NSWorkspace.openApplication(at:configuration:)`, `addsToRecentItems = false` | The only path that can cold-launch, and the only one that makes a Windowless App produce a window. `addsToRecentItems` defaults to `true` and would pollute Recent Items on every press. |
-| Windowless check | `CGWindowListCopyWindowInfo(.optionAll, kCGNullWindowID)`, filtered on owner PID and `kCGWindowLayer == 0` | Must be `.optionAll`, **not** `.optionOnScreenOnly`: a Hidden app has no on-screen windows and would be misread as Windowless. Since a Chord now Hides on second press, Hidden is the common case. Permission-free (only window *titles* need Screen Recording, and we read none). |
+| Open | `NSWorkspace.openApplication(at:configuration:)`, `addsToRecentItems = false` | One call that launches, unhides, switches Space, or opens a window, as the app sees fit. `addsToRecentItems` defaults to `true` and would pollute Recent Items on every press. |
+| Visible-window check | `CGWindowListCopyWindowInfo(.optionOnScreenOnly, kCGNullWindowID)`, filtered on owner PID and `kCGWindowLayer == 0` | Answers only "is this app showing me a window right now", which is the sole window question we need. `layer == 0` alone does **not** mean "a real window": with nothing open, Finder and Safari each still own several off-screen layer-0 windows (1470x33 menu-bar strips, a 64x64) that are identical to real ones in alpha, sharing state, store type and memory usage. On-screen-ness is the only usable discriminator - see ADR 0006. Permission-free (only window *titles* need Screen Recording, and we read none). |
 | App resolution | Resolve the Dock's `tile-data.book` **Bookmark**, exactly as the Dock does | Path-based resolution breaks when an app moves. Resolving as the Dock resolves makes "Slot N is the Nth Dock icon" true by construction. See [ADR 0004](../docs/adr/0004-resolve-apps-via-the-docks-bookmark-blob.md). |
-| Dock change detection | **None.** `stat` the plist on press; rebuild the Slot Map only if it changed | No watcher, no observers, no timers, nothing running at idle. See [ADR 0005](../docs/adr/0005-nothing-happens-until-a-key-is-pressed.md). |
+| Dock source | `CFPreferencesCopyAppValue` on `com.apple.dock`, **never the plist file** | The file lags `cfprefsd` by a measured **6.5 seconds**, because the daemon flushes to disk lazily. It is also ~9x slower to parse. Must call `CFPreferencesAppSynchronize` first or we read our own stale in-process cache forever. See [ADR 0007](../docs/adr/0007-read-the-dock-through-cfprefsd-not-the-plist-file.md). |
+| Dock change detection | **None.** Read the Dock's `mod-count` on press (0.7us); rebuild the Slot Map only if it changed | No watcher, no observers, no timers, nothing running at idle. See [ADR 0005](../docs/adr/0005-nothing-happens-until-a-key-is-pressed.md). |
 | Build | SPM executable + `Makefile` that assembles the `.app` | Xcode is not installed; the CLT SDK ships AppKit, which is all we now need. |
 | Signing | Self-signed `voice-assistant-dev` | Dropping `SMAppService` means ad-hoc would do, but a stable identity is free and avoids surprises. |
 | Sandbox | **Not sandboxed** | A sandboxed app cannot read `~/Library/Preferences/com.apple.dock.plist`. |
@@ -57,14 +58,14 @@ On the current Dock: `⌥1` Finder, `⌥2` System Settings, `⌥3` Safari, `⌥4
 
 ## Hot path
 
-A press costs a `stat`, a dictionary lookup, an array scan, and one Mach message.
+A press costs one preference read, a dictionary lookup, an array scan, and one Mach message.
 
-1. `stat` the Dock plist. Unchanged since last time (the overwhelmingly common case) → use the cached Slot Map. Changed → re-parse and rebuild it.
+1. Ask `cfprefsd` for the Dock's `mod-count` (0.7us). Unchanged since last time (the overwhelmingly common case) → use the cached Slot Map. Changed → rebuild it (3.4us).
 2. `slots[n]` → bundle identifier.
 3. Scan `NSWorkspace.shared.runningApplications` for that identifier. ~100 objects, microseconds.
 4. Decide via the pure press rule, then act.
 
-A Bookmark is resolved only when we actually need to Launch or Reopen, never to Activate or Hide.
+A Bookmark is resolved only when we actually need to Open an app, never to Activate or Hide one.
 
 ## Files
 
@@ -75,9 +76,10 @@ Resources/Info.plist
 Sources/BetterSnap/
   main.swift                          # NSApplication bootstrap, AppDelegate
   Config.swift                        # Modifier Set in UserDefaults
-  DockModel.swift                     # PURE: plist bytes -> Slot Map; Bookmark resolution
+  DockModel.swift                     # PURE: Dock prefs -> Slot Map; Bookmark resolution
   PressRule.swift                     # PURE: decide(AppState) -> Action
   HotKeyManager.swift                 # HotKeyBackend protocol + CarbonHotKeyBackend
+  DockSource.swift                    # cfprefsd-backed Slot Map, rebuilt lazily on mod-count
   AppSwitcher.swift                   # queries runningApplications; executes an Action
   StatusItemController.swift          # NSStatusItem + NSMenu
 Tests/BetterSnapTests/
@@ -120,11 +122,11 @@ End to end, as a real user:
 
 1. `make install && open /Applications/BetterSnap.app`.
 2. `⌥3` from another app - Safari comes forward. `⌥3` again - Safari hides. `⌥5` - iTerm2. Quit an app, press its key - it cold-launches.
-3. **`⌥1` with no Finder window open - a Finder window appears.** This is the case Snap gets wrong.
-4. Hide Safari, then `⌥3` - it comes back with its windows, rather than being Reopened as if windowless. This is the bug the `.optionAll` fix prevents.
+3. **`⌥1` with no Finder window open - a Finder window appears.** This is the case Snap gets wrong, and the one the first build of BetterSnap got wrong too. See ADR 0006.
+4. Hide Safari by hand, then `⌥3` - it comes back with its existing window, not a fresh blank one.
 5. Hold `⌥3` down - Safari comes forward once and does not strobe.
 6. `⌥9` (unbound) - nothing happens, and no `ª` is typed.
-7. Drag a Dock icon to reorder, then press the affected keys - the new order is live with no restart. Pin an eighth app, press `⌥8` - it works, with nothing having watched the Dock.
+7. Drag a Dock icon to reorder, then press the affected keys - the new order is live **immediately**, with no restart and no multi-second lag. Pin an eighth app, press `⌥8` - it works, with nothing having watched the Dock.
 8. Menu bar icon - the menu lists the current Slots. Switch to Control+Option, confirm the old `⌥N` stop working and the new ones work.
 
 Performance and battery, which are the whole point:

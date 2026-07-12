@@ -6,21 +6,16 @@ The plan originally specified "do nothing", on the grounds that hiding would req
 
 ## The resulting rule
 
-A press resolves in this precedence order, and the order is load-bearing:
-
-1. **Slot is unbound** - the Chord was never registered, so the keystroke passes through to whatever app the user is in.
-2. **App is not running** - Launch it.
-3. **App owns no windows at all** - Reopen it, so a window actually appears. Finder is the everyday case.
-4. **App is Hidden** - unhide, then Activate.
-5. **App is Frontmost** - Hide it.
-6. **Otherwise** - Activate it.
-
 Stated in one line: *a Chord always ends with its app in front of you, unless it already was, in which case it gets out of the way.*
 
-Rule 3 must precede rules 4 and 5. A Windowless App that is also Frontmost - Finder with nothing open, which is the single most common state of the single most used Slot - would otherwise Hide, which is invisible, and the user would read the app as broken.
+An unbound Slot is the one exception - its Chord does nothing at all.
+
+A Chord Hides **only** when the app is both Frontmost *and* actually showing you a window. Hiding an app that has nothing on screen - Finder with no windows open, which is the most common state of the most-used Slot - is invisible, and the user reads it as the app being broken. Everything else, including that case, ends in the app being shown.
+
+The mechanics of "show it" are in [0006](./0006-let-launchservices-decide-how-to-show-an-app.md), which also records why "does this app have any windows" turned out to be a question that cannot be answered from outside the app, and what we ask instead.
 
 ## Consequences
 
-The Windowless check must ask "does this app own any normal window at all", using `CGWindowListCopyWindowInfo` with `kCGWindowListOptionAll` filtered on owner PID and `kCGWindowLayer == 0`. It must **not** use `.optionOnScreenOnly`, because a Hidden app has no on-screen windows and would be misread as Windowless. Since a Chord now Hides on second press, "hidden" is no longer a rare state - it is the state the previous keypress just created, so getting this wrong would break the toggle in normal use.
-
 An accidental double-tap Hides the app. The same Chord brings it straight back, so the cost is low and no state is lost.
+
+Because a Chord now Hides on second press, a Hidden app is no longer a rare state - it is the state the previous keypress just created. Any logic that treats Hidden as an edge case is wrong by construction.

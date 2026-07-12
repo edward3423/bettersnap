@@ -40,21 +40,17 @@ _Avoid_: modifier mask, flags
 ### Actions
 
 **Activate**:
-Bring a running app to the front. Does not unhide it or open windows for it.
+Bring a visible app to the front. A fast path, and a narrow one: it will not unhide an app, will not switch Space, and will not open a window for an app that has none.
 _Avoid_: focus, raise, switch to, front
 
 **Hide**:
-Send a running app's windows away without quitting it. What a Chord does when its app is already Frontmost.
+Send a running app's windows away without quitting it. What a Chord does when its app is already Frontmost *and* showing a Visible Window.
 _Avoid_: minimize, close, dismiss
 
-**Launch**:
-Cold-start an app that is not running.
-_Avoid_: open, start, run
+**Open**:
+Hand an app to LaunchServices and let it decide what showing it means - launching it, unhiding it, switching to its Space, or opening a window for it. What clicking a Dock icon does. Everything that is not a Hide or an Activate is an Open.
+_Avoid_: launch, reopen, restore, show (these name the individual cases Open deliberately does not distinguish between)
 
-**Reopen**:
-Ask an already-running app to put a window on screen. Distinct from Activate, which will happily front a Windowless App and show the user nothing.
-_Avoid_: restore, show
-
-**Windowless App**:
-A running app with no on-screen windows. Finder is the everyday case: it is always running and often has nothing open. Activating one shows only its menu bar, so a Windowless App must be Reopened instead.
-_Avoid_: hidden app (Hidden is a different, distinct state)
+**Visible Window**:
+A normal window an app is showing on screen right now. The only window question that can be answered honestly from outside an app: every app also owns off-screen windows that are indistinguishable from real ones, so "does this app have any windows" has no reliable answer at zero permissions.
+_Avoid_: window count, open windows
