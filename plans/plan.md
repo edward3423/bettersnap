@@ -24,7 +24,7 @@ Scope: **personal tool, this Mac only.** Self-signed, no notarization, `LSMinimu
   | --- | --- |
   | Frontmost, showing a Visible Window | **Hide** |
   | Showing a Visible Window, not frontmost | **Activate** - one Mach message |
-  | Anything else: not running, Hidden, on another Space, no windows | **Open** - hand it to LaunchServices |
+  | Anything else: not running, Hidden, on another Space, no windows | **Open** - activate, then hand it to LaunchServices |
 
   A Chord Hides only when the app is genuinely showing you something. Hiding Finder-with-nothing-open - the most common state of the most-used Slot - would be invisible and read as broken.
 
@@ -46,7 +46,7 @@ On the current Dock: `⌥1` Finder, `⌥2` System Settings, `⌥3` Safari, `⌥4
 | Hotkey library | **None** - hand-roll ~100 lines | `KeyboardShortcuts` exists mainly for its recorder UI. Our config is four checkboxes over fixed number keys. |
 | Activate | `NSRunningApplication.activate(options: .activateAllWindows)` | Sub-millisecond Mach message. `.activateAllWindows` is required - the default only raises the key window, which is wrong for "show me that app". Only used when the app is already visible. |
 | Hide | `NSRunningApplication.hide()` | Plain AppKit, **no permission**. The plan originally dropped hide-on-second-press believing it needed Accessibility. It does not. |
-| Open | `NSWorkspace.openApplication(at:configuration:)`, `addsToRecentItems = false` | One call that launches, unhides, switches Space, or opens a window, as the app sees fit. `addsToRecentItems` defaults to `true` and would pollute Recent Items on every press. |
+| Open | `NSRunningApplication.activate` **and then** `NSWorkspace.openApplication(at:configuration:)`, `addsToRecentItems = false` | Takes both, and they are not interchangeable: activate raises windows that already exist and follows them across Spaces, LaunchServices creates one when there are none. Finder with a window on another Space ignores the LaunchServices reopen entirely and just takes the menu bar. `addsToRecentItems` defaults to `true` and would pollute Recent Items on every press. |
 | Visible-window check | `CGWindowListCopyWindowInfo(.optionOnScreenOnly, kCGNullWindowID)`, filtered on owner PID and `kCGWindowLayer == 0` | Answers only "is this app showing me a window right now", which is the sole window question we need. `layer == 0` alone does **not** mean "a real window": with nothing open, Finder and Safari each still own several off-screen layer-0 windows (1470x33 menu-bar strips, a 64x64) that are identical to real ones in alpha, sharing state, store type and memory usage. On-screen-ness is the only usable discriminator - see ADR 0006. Permission-free (only window *titles* need Screen Recording, and we read none). |
 | App resolution | Resolve the Dock's `tile-data.book` **Bookmark**, exactly as the Dock does | Path-based resolution breaks when an app moves. Resolving as the Dock resolves makes "Slot N is the Nth Dock icon" true by construction. See [ADR 0004](../docs/adr/0004-resolve-apps-via-the-docks-bookmark-blob.md). |
 | Dock source | `CFPreferencesCopyAppValue` on `com.apple.dock`, **never the plist file** | The file lags `cfprefsd` by a measured **6.5 seconds**, because the daemon flushes to disk lazily. It is also ~9x slower to parse. Must call `CFPreferencesAppSynchronize` first or we read our own stale in-process cache forever. See [ADR 0007](../docs/adr/0007-read-the-dock-through-cfprefsd-not-the-plist-file.md). |

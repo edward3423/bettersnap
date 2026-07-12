@@ -37,13 +37,22 @@ final class AppSwitcher {
             // which is not what "show me that app" means.
             running?.activate(options: [.activateAllWindows])
         case .open:
+            // Both, and in this order. They are complementary, and each is a no-op when
+            // the other is the one that was needed.
+            //
+            // Activate raises windows that already exist, following them to whatever
+            // Space they are on. LaunchServices creates a window when there are none.
+            // Neither is sufficient alone: Finder with a window on another Space ignores
+            // the LaunchServices reopen entirely - it decides it already has a window and
+            // does nothing, leaving you with its menu bar and no way to reach it.
+            running?.activate(options: [.activateAllWindows])
             open(slot)
         }
     }
 
-    /// Hand the app to LaunchServices. This is what the Dock does when you click an
-    /// icon, and it is why one call covers launching, unhiding, switching Space, and
-    /// making a windowless app produce a window. See ADR 0006.
+    /// Hand the app to LaunchServices, which is what the Dock does when you click an
+    /// icon: it launches the app if it is not running, unhides it if it is hidden, and
+    /// asks it to produce a window if it has none. See ADR 0006.
     private func open(_ slot: DockSlot) {
         guard let url = dock.appURL(for: slot) else {
             NSSound.beep()

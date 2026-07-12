@@ -1,12 +1,26 @@
 # Let LaunchServices decide how to show an app
 
-Anything that is not a Hide or a plain Activate is handled by handing the app to
-`NSWorkspace.openApplication`. One call covers launching an app that is not running,
+Anything that is not a Hide or a plain Activate is an **Open**: we call
+`NSRunningApplication.activate` and then hand the app to `NSWorkspace.openApplication`,
+without branching. Between them, those two cover launching an app that is not running,
 unhiding a Hidden one, switching to the Space its windows are on, and making a
-Windowless App produce a window. We do not branch between those cases, because we
-cannot reliably tell them apart - and we do not need to, because the app itself can.
+Windowless App produce a window. We do not try to work out which of those situations we
+are in, because we cannot reliably tell them apart - and we do not need to, because the
+app itself can.
 
-This is exactly what the Dock does when you click an icon.
+## Why it takes both calls
+
+They are complementary, and each is a no-op when the other is the one that was needed:
+
+- **Activate raises windows that already exist**, and follows them to whatever Space they
+  are on. This is how Command-Tab gets you to another Space.
+- **LaunchServices creates a window when there are none**, and launches or unhides the app.
+
+Neither is sufficient alone, and the failure is not symmetrical. Safari with a window on
+another Space responds to the LaunchServices reopen by coming forward and taking you to
+it. **Finder does not**: it decides it already has a window, does nothing, and leaves you
+holding its menu bar with no way to reach the window - which is indistinguishable, to the
+user, from the app being broken. Activating first fixes it, and costs one Mach message.
 
 ## Why: you cannot count an app's windows from outside it
 
@@ -46,7 +60,7 @@ The full rule is then three lines:
 
 1. Frontmost **and** showing a window - Hide it.
 2. Showing a window, not frontmost - Activate it. Sub-millisecond, one Mach message.
-3. Anything else - Open it, and let the app decide what that means.
+3. Anything else - Open it: activate, then hand it to LaunchServices, and let the app decide what that means.
 
 ## Consequences
 
