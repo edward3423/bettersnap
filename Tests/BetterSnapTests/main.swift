@@ -7,6 +7,7 @@ func main() {
     pressRuleTests(harness)
     keyCodeTests(harness)
     modifierSetTests(harness)
+    chordTests(harness)
     dockModelTests(harness)
 
     harness.finish()

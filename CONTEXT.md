@@ -30,12 +30,16 @@ _Avoid_: alias, path, URL
 ### Input
 
 **Chord**:
-The modifier combination plus a number key that triggers a Slot, e.g. Option+3.
+The modifier combination plus a number key that triggers a Slot, e.g. Option+3. Every Slot has two: the plain one, and the same keys plus Shift.
 _Avoid_: hotkey, shortcut, keybinding, accelerator
 
 **Modifier Set**:
 The modifiers shared by every Chord - any combination of Control, Option, Command, Shift. Not per-Slot; one set for all ten.
 _Avoid_: modifier mask, flags
+
+**Press Intent**:
+What a Chord is asking for: Show, or New Instance. Shift is the discriminator and is not part of the Modifier Set. Picking Shift as a modifier leaves nothing to say New Instance with, so the New Instance Chords are not registered at all.
+_Avoid_: mode, variant, action (Action is already the press rule's output)
 
 ### Actions
 
@@ -50,6 +54,10 @@ _Avoid_: minimize, close, dismiss
 **Open**:
 Hand an app to LaunchServices and let it decide what showing it means - launching it, unhiding it, switching to its Space, or opening a window for it. What clicking a Dock icon does. Everything that is not a Hide or an Activate is an Open.
 _Avoid_: launch, reopen, restore, show (these name the individual cases Open deliberately does not distinguish between)
+
+**New Instance**:
+A second copy of an app, with its own process, from a Shift-carrying Chord. An Open with `createsNewApplicationInstance`, so the press rule never runs. Apps declaring `LSMultipleInstancesProhibited` are simply activated instead, and BetterSnap does not try to predict which those are.
+_Avoid_: new window, duplicate, second copy (a new window is a different thing and most apps give you that instead)
 
 **Visible Window**:
 A normal window an app is showing on screen right now. The only window question that can be answered honestly from outside an app: every app also owns off-screen windows that are indistinguishable from real ones, so "does this app have any windows" has no reliable answer at zero permissions.

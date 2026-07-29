@@ -1,5 +1,6 @@
 import Carbon.HIToolbox
 import Foundation
+import BetterSnapCore
 
 /// `'BSNP'`. Scopes our hotkey IDs so we ignore anyone else's.
 private let hotKeySignature: OSType = 0x4253_4E50
@@ -27,14 +28,17 @@ private func hotKeyEventHandler(
         return OSStatus(eventNotHandledErr)
     }
 
+    guard let chord = Chord(rawID: hotKeyID.id) else {
+        return OSStatus(eventNotHandledErr)
+    }
+
     let backend = Unmanaged<CarbonHotKeyBackend>.fromOpaque(userData).takeUnretainedValue()
-    let slot = Int(hotKeyID.id)
     let kind = GetEventKind(event)
 
     MainActor.assumeIsolated {
         switch Int(kind) {
-        case kEventHotKeyPressed: backend.onPress?(slot)
-        case kEventHotKeyReleased: backend.onRelease?(slot)
+        case kEventHotKeyPressed: backend.onPress?(chord)
+        case kEventHotKeyReleased: backend.onRelease?(chord)
         default: break
         }
     }
@@ -46,8 +50,8 @@ private func hotKeyEventHandler(
 /// the user types in other apps. See ADR 0002.
 @MainActor
 final class CarbonHotKeyBackend: HotKeyBackend {
-    var onPress: ((Int) -> Void)?
-    var onRelease: ((Int) -> Void)?
+    var onPress: ((Chord) -> Void)?
+    var onRelease: ((Chord) -> Void)?
 
     private var handler: EventHandlerRef?
     private var registered: [EventHotKeyRef] = []
@@ -73,9 +77,9 @@ final class CarbonHotKeyBackend: HotKeyBackend {
         )
     }
 
-    func register(slot: Int, keyCode: UInt32, modifiers: UInt32) throws {
+    func register(chord: Chord, keyCode: UInt32, modifiers: UInt32) throws {
         var ref: EventHotKeyRef?
-        let id = EventHotKeyID(signature: hotKeySignature, id: UInt32(slot))
+        let id = EventHotKeyID(signature: hotKeySignature, id: chord.rawID)
 
         let status = RegisterEventHotKey(
             keyCode, modifiers, id, GetApplicationEventTarget(), 0, &ref

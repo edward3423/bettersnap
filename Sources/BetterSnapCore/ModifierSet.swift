@@ -26,6 +26,14 @@ public struct ModifierSet: OptionSet, Codable, Hashable, Sendable {
         return UInt32(flags)
     }
 
+    /// The modifiers a new-instance Chord uses: the same set, plus Shift.
+    public var addingShift: ModifierSet { union(.shift) }
+
+    /// Shift is how a Chord asks for a new instance, so it cannot also be one of the
+    /// modifiers every Chord already shares - the two would be the same keystroke, and
+    /// the plain Chord would win. Picking Shift as a modifier costs you new instances.
+    public var supportsNewInstance: Bool { !contains(.shift) }
+
     /// Rendered in the conventional macOS order.
     public var symbols: String {
         var s = ""

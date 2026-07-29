@@ -9,8 +9,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var config = ConfigStore.load()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        hotKeys.onSlot = { [weak self] slot in
-            self?.switcher.press(slot: slot)
+        hotKeys.onChord = { [weak self] chord in
+            self?.switcher.press(chord)
         }
 
         statusItem.currentModifiers = { [weak self] in self?.config.modifiers ?? .option }

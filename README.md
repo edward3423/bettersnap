@@ -4,7 +4,8 @@ Instant Dock app switching with Option+Number, Windows-taskbar style.
 
 `⌥1` is Finder, `⌥2` is the first app pinned to your Dock, `⌥3` the second, and so on
 through `⌥0` for the tenth. **Slot N is the Nth icon in your Dock.** Press a chord to
-bring that app to you; press it again to send it away.
+bring that app to you; press it again to send it away. Hold Shift as well - `⌥⇧3` - and
+you get a second copy of the app instead.
 
 A background agent with **no menu bar clutter beyond one icon, no permission prompts, and
 nothing running at all when idle** - no timers, no polling, no file watchers, no
@@ -84,6 +85,21 @@ modifiers the chords use (any combination of Control, Option, Command and Shift)
 Reorder your Dock, or pin and unpin apps, and the change takes effect on the very next
 keypress. There is nothing to restart and nothing watching.
 
+### A new instance
+
+Add Shift to any chord - `⌥⇧3` - and BetterSnap opens a *second copy* of that app: a
+separate process, the same thing `open -n` does. Not a new window.
+
+Most apps refuse. Finder, Safari, Mail and anything else declaring
+`LSMultipleInstancesProhibited` just come to the front instead, which is LaunchServices'
+call and not something BetterSnap can override. Terminals, editors and simulators
+generally do oblige. See
+[ADR 0008](./docs/adr/0008-shift-opens-a-new-instance.md).
+
+If you pick Shift as one of your modifiers, this feature turns off - `⌥⇧3` is then your
+*ordinary* chord, and there is no keystroke left to mean "new instance". The menu says so
+when that happens.
+
 ### Start on login
 
 Not built in, deliberately - it would have meant depending on `SMAppService`, which needs
@@ -105,7 +121,8 @@ an Accessibility grant.
 apps, `⌥8` is dead - and it no longer types `•` either. That is the deliberate price of
 having nothing watch the Dock: all ten chords are always registered, so pinning an eighth
 app makes `⌥8` live on the next press with no watcher involved. See
-[ADR 0005](./docs/adr/0005-nothing-happens-until-a-key-is-pressed.md).
+[ADR 0005](./docs/adr/0005-nothing-happens-until-a-key-is-pressed.md). The same is true
+of the Shift variants: `⌥⇧8` is swallowed too.
 
 **Command is a poor choice of modifier.** Nothing stops you selecting it, but `⌘1` through
 `⌘9` are tab-switching shortcuts in most browsers and editors, and BetterSnap would take

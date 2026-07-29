@@ -11,34 +11,39 @@ struct HotKeyError: Error {
 /// and not a neutral swap. See ADR 0002.
 @MainActor
 protocol HotKeyBackend: AnyObject {
-    var onPress: ((Int) -> Void)? { get set }
-    var onRelease: ((Int) -> Void)? { get set }
-    func register(slot: Int, keyCode: UInt32, modifiers: UInt32) throws
+    var onPress: ((Chord) -> Void)? { get set }
+    var onRelease: ((Chord) -> Void)? { get set }
+    func register(chord: Chord, keyCode: UInt32, modifiers: UInt32) throws
     func unregisterAll()
 }
 
-/// Registers all ten Chords and suppresses auto-repeat.
+/// Registers every Chord - all ten Slots, in both intents - and suppresses auto-repeat.
 @MainActor
 final class HotKeyManager {
     private let backend: HotKeyBackend
 
-    /// Slots whose key is currently down, and when it went down.
-    private var held: [Int: Date] = [:]
+    /// Chords whose key is currently down, and when it went down.
+    private var held: [Chord: Date] = [:]
 
-    /// Slots whose Chord could not be registered, and why. Surfaced in the menu.
-    private(set) var failures: [Int: OSStatus] = [:]
+    /// Chords that could not be registered, and why. Surfaced in the menu.
+    private(set) var failures: [Chord: OSStatus] = [:]
 
-    var onSlot: ((Int) -> Void)?
+    var onChord: ((Chord) -> Void)?
 
     init(backend: HotKeyBackend) {
         self.backend = backend
-        self.backend.onPress = { [weak self] slot in self?.handlePress(slot) }
-        self.backend.onRelease = { [weak self] slot in self?.held[slot] = nil }
+        self.backend.onPress = { [weak self] chord in self?.handlePress(chord) }
+        self.backend.onRelease = { [weak self] chord in self?.held[chord] = nil }
     }
 
-    /// All ten Chords are registered, including Slots with no app behind them.
+    /// Every Chord is registered, including Slots with no app behind them.
     /// That is what lets us have no Dock watcher: pin an eighth app and Option+8 is
     /// live on the very next press, with nothing having observed the change.
+    ///
+    /// Each Slot's key is registered twice: once with the Modifier Set, and once with
+    /// the Modifier Set plus Shift for a new instance. Unless Shift *is* one of the
+    /// chosen modifiers, in which case the two would be the same keystroke and only
+    /// the plain Chord exists.
     func apply(modifiers: ModifierSet) {
         backend.unregisterAll()
         held.removeAll()
@@ -46,31 +51,47 @@ final class HotKeyManager {
 
         for slot in KeyCodes.allSlots {
             guard let keyCode = KeyCodes.bySlot[slot] else { continue }
-            do {
-                try backend.register(
-                    slot: slot, keyCode: keyCode, modifiers: modifiers.carbonFlags
-                )
-            } catch let error as HotKeyError {
-                // macOS 15.0/15.1 briefly rejected Option-only registrations with -9868
-                // before Apple reverted it in 15.2. Option-only is our default, so a
-                // failure here is never assumed away.
-                failures[slot] = error.status
-            } catch {
-                failures[slot] = OSStatus(-1)
-            }
+
+            register(
+                Chord(slot: slot, intent: .show),
+                keyCode: keyCode,
+                modifiers: modifiers.carbonFlags
+            )
+
+            guard modifiers.supportsNewInstance else { continue }
+            register(
+                Chord(slot: slot, intent: .newInstance),
+                keyCode: keyCode,
+                modifiers: modifiers.addingShift.carbonFlags
+            )
+        }
+    }
+
+    private func register(_ chord: Chord, keyCode: UInt32, modifiers: UInt32) {
+        do {
+            try backend.register(chord: chord, keyCode: keyCode, modifiers: modifiers)
+        } catch let error as HotKeyError {
+            // macOS 15.0/15.1 briefly rejected Option-only registrations with -9868
+            // before Apple reverted it in 15.2. Option-only is our default, so a
+            // failure here is never assumed away.
+            failures[chord] = error.status
+        } catch {
+            failures[chord] = OSStatus(-1)
         }
     }
 
     /// A held key must act once, not strobe. Suppressing auto-repeat by requiring a
     /// release is safe whether or not Carbon actually repeats a held hotkey - if it
-    /// does not, this simply never gates anything.
-    private func handlePress(_ slot: Int) {
-        if let pressedAt = held[slot] {
+    /// does not, this simply never gates anything. It matters more for a new instance
+    /// than for a Show: a strobing Show is merely ugly, a strobing new instance
+    /// launches copies of an app until the machine gives up.
+    private func handlePress(_ chord: Chord) {
+        if let pressedAt = held[chord] {
             // The release is the real gate. The elapsed check is only a safety net so
-            // that a dropped release event cannot wedge a Slot dead forever.
+            // that a dropped release event cannot wedge a Chord dead forever.
             guard Date().timeIntervalSince(pressedAt) > 2 else { return }
         }
-        held[slot] = Date()
-        onSlot?(slot)
+        held[chord] = Date()
+        onChord?(chord)
     }
 }
