@@ -5,11 +5,12 @@ Instant Dock app switching with Option+Number, Windows-taskbar style.
 `⌥1` is Finder, `⌥2` is the first app pinned to your Dock, `⌥3` the second, and so on
 through `⌥0` for the tenth. **Slot N is the Nth icon in your Dock.** Press a chord to
 bring that app to you; press it again to send it away. Hold Shift as well - `⌥⇧3` - and
-you get a second copy of the app instead.
+you get a new window of the app instead.
 
-A background agent with **no menu bar clutter beyond one icon, no permission prompts, and
-nothing running at all when idle** - no timers, no polling, no file watchers, no
-notification observers. Between keypresses the process is not merely quiet, it is inert.
+A background agent with **no menu bar clutter beyond one icon and nothing running at all
+when idle** - no timers, no polling, no file watchers, no notification observers. Between
+keypresses the process is not merely quiet, it is inert. The only permission it can ask
+for is Accessibility, and only if you use the Shift chords.
 
 See [CONTEXT.md](./CONTEXT.md) for terminology and [docs/adr/](./docs/adr/) for why it is
 built the way it is.
@@ -85,19 +86,20 @@ modifiers the chords use (any combination of Control, Option, Command and Shift)
 Reorder your Dock, or pin and unpin apps, and the change takes effect on the very next
 keypress. There is nothing to restart and nothing watching.
 
-### A new instance
+### A new window
 
-Add Shift to any chord - `⌥⇧3` - and BetterSnap opens a *second copy* of that app: a
-separate process, the same thing `open -n` does. Not a new window.
+Add Shift to any chord - `⌥⇧3` - and BetterSnap asks that app for *one more window*, on
+the same running instance: same Dock tile, one `⌘Q`. It does this by pressing the app's
+own plain `⌘N` menu item, found by its shortcut rather than its name so localization does
+not matter. Apps where `⌘N` means a new *document* give you exactly that; an app with no
+plain `⌘N` at all gets you a beep. If the app is not running, the chord simply launches
+it. See [ADR 0008](./docs/adr/0008-shift-opens-a-new-window.md).
 
-Most apps refuse. Finder, Safari, Mail and anything else declaring
-`LSMultipleInstancesProhibited` just come to the front instead, which is LaunchServices'
-call and not something BetterSnap can override. Terminals, editors and simulators
-generally do oblige. See
-[ADR 0008](./docs/adr/0008-shift-opens-a-new-instance.md).
+This is the one feature that needs a permission - see
+[Permissions](#permissions) below.
 
 If you pick Shift as one of your modifiers, this feature turns off - `⌥⇧3` is then your
-*ordinary* chord, and there is no keystroke left to mean "new instance". The menu says so
+*ordinary* chord, and there is no keystroke left to mean "new window". The menu says so
 when that happens.
 
 ### Start on login
@@ -109,11 +111,15 @@ the app to be signed in ways a personal build cannot rely on. Add it by hand ins
 
 ### Permissions
 
-None. BetterSnap never asks for Accessibility or Input Monitoring, and this is a hard
-constraint rather than a preference - see
-[ADR 0001](./docs/adr/0001-zero-tcc-permissions-is-a-hard-constraint.md). The cost is that
-repeat presses cannot cycle between windows *within* an app, which is not possible without
-an Accessibility grant.
+One, optional: Accessibility, used only to press an app's `⌘N` menu item for the Shift
+chords. The prompt appears the first time you press a Shift chord at a running app -
+never at launch, and never if you don't use the feature. macOS shows it once; if you
+missed it, the menu bar's `New window (grant Accessibility…)` line takes you to the right
+System Settings pane. Deny it and every plain chord still works.
+
+Everything else runs at zero TCC permissions, and Input Monitoring is never requested -
+see [ADR 0001](./docs/adr/0001-zero-tcc-permissions-for-the-core.md). Repeat presses
+still cannot cycle between windows *within* an app; that remains deliberately unbuilt.
 
 ### Two things that will surprise you
 

@@ -59,13 +59,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
         // One line rather than a second block of ten: the rule is uniform across every
         // Slot, so stating it once says everything a repeated list would.
-        let newInstance = NSMenuItem(
-            title: newInstanceHint(modifiers: modifiers, failures: failures),
-            action: nil,
-            keyEquivalent: ""
-        )
-        newInstance.isEnabled = false
-        menu.addItem(newInstance)
+        menu.addItem(newWindowLine(modifiers: modifiers, failures: failures))
 
         menu.addItem(.separator())
 
@@ -92,21 +86,43 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         menu.addItem(quit)
     }
 
-    /// Adding Shift to any Chord opens a new instance - unless Shift is already one of
+    /// Adding Shift to any Chord opens a new window - unless Shift is already one of
     /// the modifiers, in which case there is no keystroke left to say it with.
-    private func newInstanceHint(
+    ///
+    /// The one live state here is the missing Accessibility grant: that line is
+    /// clickable and goes straight to the right System Settings pane, because the
+    /// system prompt only appears once and this is the way back afterwards.
+    private func newWindowLine(
         modifiers: ModifierSet, failures: [Chord: OSStatus]
-    ) -> String {
-        guard modifiers.supportsNewInstance else {
-            return "Add \u{21E7}   New instance   (unavailable: \u{21E7} is a modifier)"
+    ) -> NSMenuItem {
+        let title: String
+        var clickable = false
+
+        if !modifiers.supportsNewWindow {
+            title = "Add \u{21E7}   New window   (unavailable: \u{21E7} is a modifier)"
+        } else if KeyCodes.allSlots.contains(where: {
+            failures[Chord(slot: $0, intent: .newWindow)] != nil
+        }) {
+            title = "Add \u{21E7}   New window   (unavailable)"
+        } else if !NewWindow.isTrusted {
+            title = "Add \u{21E7}   New window   (grant Accessibility\u{2026})"
+            clickable = true
+        } else {
+            title = "Add \u{21E7}   New window"
         }
-        let unavailable = KeyCodes.allSlots.contains {
-            failures[Chord(slot: $0, intent: .newInstance)] != nil
-        }
-        if unavailable {
-            return "Add \u{21E7}   New instance   (unavailable)"
-        }
-        return "Add \u{21E7}   New instance"
+
+        let item = NSMenuItem(
+            title: title,
+            action: clickable ? #selector(openAccessibilitySettings) : nil,
+            keyEquivalent: ""
+        )
+        item.target = clickable ? self : nil
+        item.isEnabled = clickable
+        return item
+    }
+
+    @objc private func openAccessibilitySettings() {
+        NewWindow.openSystemSettings()
     }
 
     private static let modifierChoices: [(String, ModifierSet)] = [

@@ -8,8 +8,8 @@ import Foundation
 public enum PressIntent: Int, Sendable, CaseIterable {
     /// Show the Slot's app, or send it away if it is already in front of you.
     case show = 0
-    /// Open a second copy of the Slot's app, leaving the running one where it is.
-    case newInstance = 1
+    /// Ask the Slot's app for one more window, on the same running instance.
+    case newWindow = 1
 }
 
 /// A registered Chord: which Slot, and what pressing it means.

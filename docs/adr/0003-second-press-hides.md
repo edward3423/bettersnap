@@ -2,7 +2,7 @@
 
 Pressing a Chord whose app is already Frontmost Hides that app, rather than doing nothing. This gives real Windows taskbar parity - Win+3 twice minimizes - and turns every Chord into a peek/dismiss toggle: Option+4 to glance at WhatsApp, Option+4 to send it away.
 
-The plan originally specified "do nothing", on the grounds that hiding would require an Accessibility permission and so would violate [0001](./0001-zero-tcc-permissions-is-a-hard-constraint.md). That was simply wrong. `NSRunningApplication.hide()` is plain AppKit and costs no permission; what actually costs Accessibility is cycling *between* windows of one app, which we are not doing. The behaviour was nearly dropped for a price we were never going to pay.
+The plan originally specified "do nothing", on the grounds that hiding would require an Accessibility permission and so would violate [0001](./0001-zero-tcc-permissions-for-the-core.md). That was simply wrong. `NSRunningApplication.hide()` is plain AppKit and costs no permission; what actually costs Accessibility is cycling *between* windows of one app, which we are not doing. The behaviour was nearly dropped for a price we were never going to pay.
 
 ## The resulting rule
 

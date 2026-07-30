@@ -22,10 +22,40 @@ final class AppSwitcher {
         switch chord.intent {
         case .show:
             show(slot)
-        case .newInstance:
-            // No press rule and no state to read. "Give me another one" is unambiguous
-            // whatever the app is currently doing, including not running at all.
-            open(slot, newInstance: true)
+        case .newWindow:
+            // No press rule and no state to read. "Give me another window" is
+            // unambiguous whatever the app is doing, including not running at all.
+            newWindow(slot)
+        }
+    }
+
+    /// One more window on the running instance, via the app's own Cmd+N menu item.
+    /// The only path in the app that needs a permission - see ADR 0008.
+    private func newWindow(_ slot: DockSlot) {
+        guard let bundleID = slot.bundleID,
+              let running = NSWorkspace.shared.runningApplications.first(where: {
+                  $0.bundleIdentifier == bundleID
+              })
+        else {
+            // Not running: launching *is* the new window, and costs no permission.
+            open(slot)
+            return
+        }
+
+        guard NewWindow.isTrusted else {
+            // The chord is swallowed either way; the prompt says why. macOS only
+            // shows it once - after that the menu bar item is the way back in.
+            NewWindow.promptForTrust()
+            return
+        }
+
+        // Activate first so the window lands in front of you. The AX press does not
+        // need the app frontmost, so the order is for the eye, not for correctness.
+        running.activate(options: [])
+        if !NewWindow.open(pid: running.processIdentifier) {
+            // No plain Cmd+N anywhere in its menus: an app with no notion of
+            // "new window". Nothing sensible to fall back to, so say no audibly.
+            NSSound.beep()
         }
     }
 
@@ -66,7 +96,7 @@ final class AppSwitcher {
     /// Hand the app to LaunchServices, which is what the Dock does when you click an
     /// icon: it launches the app if it is not running, unhides it if it is hidden, and
     /// asks it to produce a window if it has none. See ADR 0006.
-    private func open(_ slot: DockSlot, newInstance: Bool = false) {
+    private func open(_ slot: DockSlot) {
         guard let url = dock.appURL(for: slot) else {
             NSSound.beep()
             return
@@ -75,13 +105,6 @@ final class AppSwitcher {
         configuration.activates = true
         // Defaults to true, and would otherwise pollute Recent Items on every press.
         configuration.addsToRecentItems = false
-        // A genuinely separate copy, with its own process and its own pid. Apps that
-        // declare `LSMultipleInstancesProhibited` - Finder, Safari, most single-window
-        // apps - are handed the request anyway and activate the existing copy instead.
-        // That is LaunchServices' call to make and not ours: we cannot ask an app
-        // whether it permits a second instance without reading its bundle, and the
-        // answer would still be LaunchServices' to enforce. See ADR 0008.
-        configuration.createsNewApplicationInstance = newInstance
         NSWorkspace.shared.openApplication(at: url, configuration: configuration)
     }
 

@@ -39,7 +39,7 @@ key of every layer-0 window, a real Safari window and a phantom agree exactly on
 `kCGWindowMemoryUsage` (2368). Only two things differ:
 
 - `kCGWindowName` - unusable. Window titles are redacted without a Screen Recording
-  permission, which we will not take (see [0001](./0001-zero-tcc-permissions-is-a-hard-constraint.md)). The probe that found this ran under the terminal's TCC
+  permission, which we will not take (see [0001](./0001-zero-tcc-permissions-for-the-core.md)). The probe that found this ran under the terminal's TCC
   identity, which has that grant; BetterSnap does not and would read empty strings.
 - `kCGWindowIsOnscreen` - present on real windows, absent on phantoms.
 
@@ -73,7 +73,9 @@ when you click a Dock icon, which nobody experiences as slow.
 
 An app that is frontmost with all its windows minimized will Open, producing a new
 window rather than un-minimizing the old one. Un-minimizing requires Accessibility,
-so this is a deliberate consequence of [0001](./0001-zero-tcc-permissions-is-a-hard-constraint.md).
+which the Show path does not use even now that the New Window feature holds the
+grant - the core stays at zero permissions, see
+[0001](./0001-zero-tcc-permissions-for-the-core.md).
 
 **Do not reintroduce a window count.** If a future change seems to need "how many
 windows does this app have", it is asking a question the operating system will not

@@ -38,7 +38,7 @@ The modifiers shared by every Chord - any combination of Control, Option, Comman
 _Avoid_: modifier mask, flags
 
 **Press Intent**:
-What a Chord is asking for: Show, or New Instance. Shift is the discriminator and is not part of the Modifier Set. Picking Shift as a modifier leaves nothing to say New Instance with, so the New Instance Chords are not registered at all.
+What a Chord is asking for: Show, or New Window. Shift is the discriminator and is not part of the Modifier Set. Picking Shift as a modifier leaves nothing to say New Window with, so the New Window Chords are not registered at all.
 _Avoid_: mode, variant, action (Action is already the press rule's output)
 
 ### Actions
@@ -55,9 +55,9 @@ _Avoid_: minimize, close, dismiss
 Hand an app to LaunchServices and let it decide what showing it means - launching it, unhiding it, switching to its Space, or opening a window for it. What clicking a Dock icon does. Everything that is not a Hide or an Activate is an Open.
 _Avoid_: launch, reopen, restore, show (these name the individual cases Open deliberately does not distinguish between)
 
-**New Instance**:
-A second copy of an app, with its own process, from a Shift-carrying Chord. An Open with `createsNewApplicationInstance`, so the press rule never runs. Apps declaring `LSMultipleInstancesProhibited` are simply activated instead, and BetterSnap does not try to predict which those are.
-_Avoid_: new window, duplicate, second copy (a new window is a different thing and most apps give you that instead)
+**New Window**:
+One more window on an app's running instance, from a Shift-carrying Chord: the app's own plain Cmd+N menu item, pressed through Accessibility. The press rule never runs. The one action needing a TCC grant; when the app is not running it degrades to an Open, which needs none.
+_Avoid_: new instance, second copy, duplicate (a new instance is a separate process with its own Dock tile, which is what this feature deliberately is not)
 
 **Visible Window**:
 A normal window an app is showing on screen right now. The only window question that can be answered honestly from outside an app: every app also owns off-screen windows that are indistinguishable from real ones, so "does this app have any windows" has no reliable answer at zero permissions.

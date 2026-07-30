@@ -13,7 +13,7 @@ func chordTests(_ h: Harness) {
         allChords.allSatisfy { Chord(rawID: $0.rawID) == $0 }
     )
     h.check(
-        "no two Chords share a raw ID, so a new instance is never mistaken for a Show",
+        "no two Chords share a raw ID, so a new window is never mistaken for a Show",
         Set(allChords.map(\.rawID)).count == allChords.count
     )
     h.check(
@@ -27,10 +27,10 @@ func chordTests(_ h: Harness) {
         Chord(rawID: 99 << 8 | 3) == nil
     )
 
-    h.section("New instance chords")
+    h.section("New window chords")
 
     h.check(
-        "the new-instance Chord is the Modifier Set plus Shift",
+        "the new-window Chord is the Modifier Set plus Shift",
         ModifierSet.option.addingShift == ModifierSet([.option, .shift])
     )
     h.check(
@@ -42,19 +42,19 @@ func chordTests(_ h: Harness) {
         ModifierSet([.control, .shift]).addingShift == ModifierSet([.control, .shift])
     )
 
-    // The whole point of `supportsNewInstance`: if Shift is one of the shared
+    // The whole point of `supportsNewWindow`: if Shift is one of the shared
     // modifiers then both Chords are the same keystroke, and registering the second
     // would be registering a duplicate.
     h.check(
-        "a Modifier Set without Shift supports new instances",
-        ModifierSet([.control, .option]).supportsNewInstance
+        "a Modifier Set without Shift supports new windows",
+        ModifierSet([.control, .option]).supportsNewWindow
     )
     h.check(
         "a Modifier Set containing Shift does not",
-        !ModifierSet([.option, .shift]).supportsNewInstance
+        !ModifierSet([.option, .shift]).supportsNewWindow
     )
     h.check(
-        "Option, the default Modifier Set, supports new instances",
-        ModifierSet.option.supportsNewInstance
+        "Option, the default Modifier Set, supports new windows",
+        ModifierSet.option.supportsNewWindow
     )
 }

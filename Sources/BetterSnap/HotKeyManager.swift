@@ -41,7 +41,7 @@ final class HotKeyManager {
     /// live on the very next press, with nothing having observed the change.
     ///
     /// Each Slot's key is registered twice: once with the Modifier Set, and once with
-    /// the Modifier Set plus Shift for a new instance. Unless Shift *is* one of the
+    /// the Modifier Set plus Shift for a new window. Unless Shift *is* one of the
     /// chosen modifiers, in which case the two would be the same keystroke and only
     /// the plain Chord exists.
     func apply(modifiers: ModifierSet) {
@@ -58,9 +58,9 @@ final class HotKeyManager {
                 modifiers: modifiers.carbonFlags
             )
 
-            guard modifiers.supportsNewInstance else { continue }
+            guard modifiers.supportsNewWindow else { continue }
             register(
-                Chord(slot: slot, intent: .newInstance),
+                Chord(slot: slot, intent: .newWindow),
                 keyCode: keyCode,
                 modifiers: modifiers.addingShift.carbonFlags
             )
@@ -82,9 +82,9 @@ final class HotKeyManager {
 
     /// A held key must act once, not strobe. Suppressing auto-repeat by requiring a
     /// release is safe whether or not Carbon actually repeats a held hotkey - if it
-    /// does not, this simply never gates anything. It matters more for a new instance
-    /// than for a Show: a strobing Show is merely ugly, a strobing new instance
-    /// launches copies of an app until the machine gives up.
+    /// does not, this simply never gates anything. It matters more for a new window
+    /// than for a Show: a strobing Show is merely ugly, a strobing new window piles
+    /// up windows until the machine gives up.
     private func handlePress(_ chord: Chord) {
         if let pressedAt = held[chord] {
             // The release is the real gate. The elapsed check is only a safety net so
