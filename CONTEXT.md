@@ -11,7 +11,7 @@ A number, 1 to 10, that a chord can be bound to. Slot 1 is Finder; slots 2 upwar
 _Avoid_: index, position, shortcut
 
 **Bound Slot**:
-A Slot that has an app behind it. Slots past the end of the Dock are unbound, and their chords are never registered at all, so the keystroke reaches whatever app the user is typing in.
+A Slot that has an app behind it. Slots past the end of the Dock are unbound, but their Chords are registered all the same - that is what lets there be no Dock watcher. An unbound Chord does nothing and swallows the keystroke rather than passing it through.
 _Avoid_: empty slot, active slot
 
 **Slot Map**:

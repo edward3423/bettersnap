@@ -12,8 +12,8 @@ when idle** - no timers, no polling, no file watchers, no notification observers
 keypresses the process is not merely quiet, it is inert. The only permission it can ask
 for is Accessibility, and only if you use the Shift chords.
 
-See [CONTEXT.md](./CONTEXT.md) for terminology and [docs/adr/](./docs/adr/) for why it is
-built the way it is.
+See [CONTEXT.md](./CONTEXT.md) for terminology, [docs/design.md](./docs/design.md) for how
+it is built, and [docs/adr/](./docs/adr/) for why it is built that way.
 
 ## Requirements
 
