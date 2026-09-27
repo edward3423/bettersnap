@@ -49,14 +49,11 @@ final class AppSwitcher {
             return
         }
 
-        // Activate first so the window lands in front of you. The AX press does not
-        // need the app frontmost, so the order is for the eye, not for correctness.
+        // Activate first so the window lands in front of you. Neither the AX press
+        // nor a keystroke posted to the pid needs the app frontmost, so the order is
+        // for the eye, not for correctness.
         running.activate(options: [])
-        if !NewWindow.open(pid: running.processIdentifier) {
-            // No plain Cmd+N anywhere in its menus: an app with no notion of
-            // "new window". Nothing sensible to fall back to, so say no audibly.
-            NSSound.beep()
-        }
+        NewWindow.open(pid: running.processIdentifier)
     }
 
     private func show(_ slot: DockSlot) {

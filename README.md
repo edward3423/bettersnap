@@ -91,9 +91,11 @@ keypress. There is nothing to restart and nothing watching.
 Add Shift to any chord - `⌥⇧3` - and BetterSnap asks that app for *one more window*, on
 the same running instance: same Dock tile, one `⌘Q`. It does this by pressing the app's
 own plain `⌘N` menu item, found by its shortcut rather than its name so localization does
-not matter. Apps where `⌘N` means a new *document* give you exactly that; an app with no
-plain `⌘N` at all gets you a beep. If the app is not running, the chord simply launches
-it. See [ADR 0008](./docs/adr/0008-shift-opens-a-new-window.md).
+not matter - or, for apps like Safari whose menus only assign that shortcut as they open,
+by sending the app the `⌘N` keystroke itself. Apps where `⌘N` means a new *document* give
+you exactly that; an app with no plain `⌘N` at all gets you a beep. If the app is not
+running, the chord simply launches it.
+See [ADR 0008](./docs/adr/0008-shift-opens-a-new-window.md).
 
 This is the one feature that needs a permission - see
 [Permissions](#permissions) below.

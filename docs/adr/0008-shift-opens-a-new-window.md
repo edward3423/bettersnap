@@ -12,7 +12,13 @@ The menu item is located by walking the app's menu bar for an item whose command
 
 The Apple menu is skipped - it is the system's, not the app's - and only the top level of each menu is searched: that is where the item lives in every app observed, and recursing into submenus makes a miss slower without making a hit likelier.
 
-An app with no plain Cmd+N anywhere - one with no notion of "new window" - gets a beep. There is nothing sensible to fall back to, and a silent swallow would read as the Chord being broken.
+## When the menu bar will not say
+
+The walk trusts the menu bar to report each item's shortcut at rest, and not every app's does. Safari's "New Window" item exposes no key equivalent at all through Accessibility while the File menu is closed; only "New Private Window" reports Shift+Cmd+N. Safari assigns the plain Cmd+N while the menu is being validated for display, depending on its private-browsing settings, and a closed menu is never validated. So the walk finds nothing, and Safari - the app most people would try this on first - got a beep.
+
+When no plain Cmd+N item is found, the keystroke itself is posted to the app's process (`CGEvent.postToPid`), with Command as its only flag. That runs the app's own key-equivalent dispatch, which does validate the menu and lands on the same item the walk could not see. The menu press stays the first choice because it is exact: it names the item and says whether one exists. The keystroke is the fallback because it cannot tell "not assigned yet" from "not there" - and an app with no Cmd+N anywhere beeps at the keystroke itself, which is the same audible "no" the missing item used to earn from BetterSnap directly.
+
+Posting to a pid needs the same Accessibility grant as the menu press, so the fallback adds no permission. The flags are set on the posted events explicitly rather than inherited: the user is still holding the Chord's modifiers when this runs, and the app must see Cmd+N, not Ctrl+Shift+Cmd+N.
 
 ## Shift, and not a modifier the user picks
 

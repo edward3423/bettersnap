@@ -3,7 +3,7 @@ BUNDLE  := $(APP).app
 BUILD   := $(shell swift build -c release --arch arm64 --show-bin-path)
 STAGE   := build/$(BUNDLE)
 INSTALL := /Applications/$(BUNDLE)
-IDENTITY := voice-assistant-dev
+IDENTITY := edward-dev
 
 .PHONY: all build test bundle sign install run clean
 
