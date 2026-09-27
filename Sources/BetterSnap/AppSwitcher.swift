@@ -49,11 +49,66 @@ final class AppSwitcher {
             return
         }
 
-        // Activate first so the window lands in front of you. Neither the AX press
-        // nor a keystroke posted to the pid needs the app frontmost, so the order is
-        // for the eye, not for correctness.
-        running.activate(options: [])
-        NewWindow.open(pid: running.processIdentifier)
+        // Ask for the window *before* activating, and activate only once it exists.
+        // Activation raises the app's key window and follows it to its Space; done
+        // first, that drags your old window forward (and you to its Space) before
+        // the new one is even built. Done after, the key window is the new one, so
+        // that is all that moves. Neither the AX press nor a posted keystroke needs
+        // the app frontmost. The caveats are in ADR 0008.
+        let pid = running.processIdentifier
+        let before = windowIDs(pid: pid)
+        NewWindow.open(pid: pid)
+
+        // A hidden app cannot be helped: unhiding is all-or-nothing in macOS, and
+        // the new window stays hidden with the rest until the app is activated, so
+        // there is nothing to wait for.
+        if running.isHidden {
+            running.activate(options: [])
+            return
+        }
+
+        // The app builds the window on its own schedule - the press has returned long
+        // before it exists - so its arrival is watched for rather than assumed. The
+        // deadline covers apps that create no window at all; activation is then the
+        // same as before, just late.
+        waitForWindow(pid: pid, besides: before, deadline: Date().addingTimeInterval(1.5)) {
+            running.activate(options: [])
+        }
+    }
+
+    private func waitForWindow(
+        pid: pid_t, besides known: Set<CGWindowID>, deadline: Date,
+        then activate: @escaping () -> Void
+    ) {
+        if !windowIDs(pid: pid).isSubset(of: known) || Date() >= deadline {
+            activate()
+            return
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(16)) { [weak self] in
+            self?.waitForWindow(pid: pid, besides: known, deadline: deadline, then: activate)
+        }
+    }
+
+    /// Every layer-0 window the app owns, on any Space. A new window may land on the
+    /// app's Space rather than yours - see ADR 0008 - so on-screen-only would miss it.
+    /// The set includes the off-screen helper windows ADR 0006 warns about, which is
+    /// fine here: the question is not "is there a window" but "is there a *new* one",
+    /// and apps create those helpers alongside the real window, not in its place.
+    private func windowIDs(pid: pid_t) -> Set<CGWindowID> {
+        guard
+            let windows = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID)
+                as? [[String: Any]]
+        else { return [] }
+
+        var ids = Set<CGWindowID>()
+        for window in windows {
+            guard (window[kCGWindowOwnerPID as String] as? pid_t) == pid,
+                  (window[kCGWindowLayer as String] as? Int) == 0,
+                  let id = window[kCGWindowNumber as String] as? CGWindowID
+            else { continue }
+            ids.insert(id)
+        }
+        return ids
     }
 
     private func show(_ slot: DockSlot) {

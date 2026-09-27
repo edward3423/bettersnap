@@ -40,4 +40,10 @@ That case is not worked around. The shifted Chords are simply not registered, an
 
 **Auto-repeat suppression stays load-bearing.** A held plain Chord that strobed would look silly. A held shifted Chord that strobed would pile up windows until the machine gave up. The release gate in `HotKeyManager` is per-`Chord` and unchanged.
 
-**The new window follows the app's focus rules, not ours.** The target is activated first so the window lands in front; the AX press itself does not need the app frontmost. Apps that put their new window on another Space or inherit an old size are being themselves, and are not corrected.
+**Only the new window comes forward.** The app is asked for the window first and activated afterwards, once a new window of its has appeared (or 1.5 s have passed). Activation raises an app's key window, and done first it would raise your *old* window and follow it to its Space before the new one existed. Done after, the key window is the new one, and the app's other windows stay where they were in the stacking order. Three caveats, all macOS behaviour rather than ours:
+
+- *A hidden app unhides whole.* Unhiding is all-or-nothing, and a window created while the app is hidden is hidden with the rest, so a hidden app is activated straight away and every window it has comes back.
+- *The new window may land on the app's Space, not yours.* Observed with Safari: with its windows on another Space, the window it creates in the background appears there, and activation takes you to it. A Space showing a full-screen app cannot host it at all. The arrival is therefore detected by a new window ID on any Space, not by a window on this one.
+- *Apps that create no window get a late activation.* Nothing new ever appears, so the deadline fires and the app comes forward 1.5 s after it beeped at the keystroke.
+
+The new window otherwise follows the app's own rules: one that inherits an old size or position is being itself, and is not corrected.
