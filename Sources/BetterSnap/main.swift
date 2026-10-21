@@ -22,7 +22,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             ConfigStore.save(config)
             hotKeys.apply(modifiers: modifiers)
         }
-        statusItem.onHideIconConfirmed = { [weak self] in
+        statusItem.onHideIcon = { [weak self] in
             self?.setIconVisible(false)
         }
         statusItem.setIconVisible(config.showsMenuBarIcon)

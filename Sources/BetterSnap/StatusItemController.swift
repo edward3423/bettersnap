@@ -8,8 +8,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     /// Called with the new set when the user toggles a modifier.
     var onModifiersChanged: ((ModifierSet) -> Void)?
-    /// Called once the user has confirmed hiding the icon from its own menu.
-    var onHideIconConfirmed: (() -> Void)?
+    /// Called when the user hides the icon from its own menu.
+    var onHideIcon: (() -> Void)?
     var currentModifiers: () -> ModifierSet = { .option }
     var currentSlots: () -> [Int: DockSlot] = { [:] }
     var currentFailures: () -> [Chord: OSStatus] = { [:] }
@@ -26,8 +26,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         item.button?.image = image
 
         // `behavior` is deliberately left at its default. Hiding goes through the
-        // menu instead, which can say how to get the icon back before it goes; a
-        // command-drag out of the menu bar (`.removalAllowed`) cannot.
+        // menu instead, so the choice lands in Config; a command-drag out of the
+        // menu bar (`.removalAllowed`) would bypass it.
 
         let menu = NSMenu()
         menu.delegate = self
@@ -89,7 +89,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
         // Only ever seen ticked: unticking it removes the menu it lives in.
         let showIcon = NSMenuItem(
-            title: "Show Menu Bar Icon", action: #selector(confirmHideIcon), keyEquivalent: ""
+            title: "Show Menu Bar Icon", action: #selector(hideIcon), keyEquivalent: ""
         )
         showIcon.target = self
         showIcon.state = .on
@@ -162,23 +162,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         onModifiersChanged?(modifiers)
     }
 
-    /// The icon is the only UI, so it does not vanish without first saying how to
-    /// bring it back.
-    @objc private func confirmHideIcon() {
-        let alert = NSAlert()
-        alert.messageText = "Hide the menu bar icon?"
-        alert.informativeText = """
-            BetterSnap keeps running and every chord keeps working. To show the icon \
-            again, open BetterSnap again - from Spotlight, Launchpad or the \
-            Applications folder.
-            """
-        alert.addButton(withTitle: "Hide Icon")
-        alert.addButton(withTitle: "Cancel")
-
-        // An accessory app's alert opens behind the frontmost app unless it activates.
-        NSApp.activate()
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
-        onHideIconConfirmed?()
+    @objc private func hideIcon() {
+        onHideIcon?()
     }
 
     @objc private func quit() {
