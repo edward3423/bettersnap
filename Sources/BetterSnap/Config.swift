@@ -3,6 +3,21 @@ import BetterSnapCore
 
 struct Config: Codable {
     var modifiers: ModifierSet = .option
+    var showsMenuBarIcon = true
+
+    init() {}
+
+    /// Hand-written so a field added later decodes as its default when an older blob
+    /// lacks it. The synthesized decoder throws on a missing key instead, and `load`
+    /// would then reset every other setting along with it.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let defaults = Config()
+        modifiers = try container.decodeIfPresent(ModifierSet.self, forKey: .modifiers)
+            ?? defaults.modifiers
+        showsMenuBarIcon = try container.decodeIfPresent(Bool.self, forKey: .showsMenuBarIcon)
+            ?? defaults.showsMenuBarIcon
+    }
 }
 
 enum ConfigStore {

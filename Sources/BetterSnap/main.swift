@@ -22,9 +22,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             ConfigStore.save(config)
             hotKeys.apply(modifiers: modifiers)
         }
+        statusItem.onHideIconConfirmed = { [weak self] in
+            self?.setIconVisible(false)
+        }
+        statusItem.setIconVisible(config.showsMenuBarIcon)
 
         // Carbon is main-thread only, and registration belongs here.
         hotKeys.apply(modifiers: config.modifiers)
+    }
+
+    /// Opening the app while it is already running - from Spotlight, Finder, or
+    /// `open` - is the way back from a hidden icon, since the icon was the only UI.
+    func applicationShouldHandleReopen(
+        _ sender: NSApplication, hasVisibleWindows flag: Bool
+    ) -> Bool {
+        setIconVisible(true)
+        return false
+    }
+
+    private func setIconVisible(_ visible: Bool) {
+        config.showsMenuBarIcon = visible
+        ConfigStore.save(config)
+        statusItem.setIconVisible(visible)
     }
 }
 

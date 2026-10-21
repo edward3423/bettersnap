@@ -83,6 +83,10 @@ exit non-zero on failure, which is what a test framework is actually needed for.
 Click the menu bar icon to see what every slot is currently bound to, change which
 modifiers the chords use (any combination of Control, Option, Command and Shift), or quit.
 
+Untick **Show Menu Bar Icon** to hide the icon. BetterSnap keeps running and every chord
+keeps working. To get the icon back, open BetterSnap again - from Spotlight, Launchpad or
+the Applications folder - while it is running.
+
 Reorder your Dock, or pin and unpin apps, and the change takes effect on the very next
 keypress. There is nothing to restart and nothing watching.
 
