@@ -20,7 +20,7 @@ it is built, and [docs/adr/](./docs/adr/) for why it is built that way.
 - Apple Silicon Mac running macOS 26 (Tahoe) or later.
 - Command Line Tools for Xcode. **Full Xcode is not required** - the CLT SDK ships
   AppKit, which is all this needs.
-- A code signing identity. The `Makefile` defaults to `voice-assistant-dev`; check what
+- A code signing identity. The `Makefile` defaults to `edward-dev`; check what
   you have with:
 
   ```sh

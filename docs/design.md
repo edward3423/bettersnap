@@ -57,7 +57,7 @@ Scope: **personal tool, this Mac only.** Self-signed, no notarization, `LSMinimu
 | Dock change detection | **None.** Read the Dock's `mod-count` on press (0.7us); rebuild the Slot Map only if it changed | No watcher, no observers, no timers, nothing running at idle. See ADR 0005. |
 | Permissions | Accessibility, requested lazily on the first shifted press at a running app. Nothing else, ever | The core stays at zero TCC, and Input Monitoring is never requested. The one grant gates one feature, and denying it costs only that feature - see [ADR 0001](./adr/0001-zero-tcc-permissions-for-the-core.md). |
 | Build | SPM package + `Makefile` that assembles the `.app` | Xcode is not installed; the CLT SDK ships AppKit, which is all we need. |
-| Signing | Self-signed `voice-assistant-dev` | Dropping `SMAppService` means ad-hoc would do, but a stable identity is free and avoids surprises. |
+| Signing | Self-signed `edward-dev` | Dropping `SMAppService` means ad-hoc would do, but a stable identity is free and avoids surprises. |
 | Sandbox | **Not sandboxed** | A sandboxed app cannot read the Dock's preferences. |
 | Persistence | One `Codable` blob in `UserDefaults` - just the Modifier Set | Never call `synchronize()`. On decode failure, fall back to Option. |
 
